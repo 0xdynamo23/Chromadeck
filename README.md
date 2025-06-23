@@ -2,12 +2,6 @@
 
 A modern, feature-rich presentation editor built with Next.js, Fabric.js, and Redux Toolkit. Create, edit, and manage presentation slides with a powerful canvas-based editor that supports text, images, and shapes.
 
-![Presentation App](https://img.shields.io/badge/Next.js-15.3.4-black?style=flat-square&logo=next.js)
-![React](https://img.shields.io/badge/React-19.0.0-blue?style=flat-square&logo=react)
-![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue?style=flat-square&logo=typescript)
-![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4.0-38B2AC?style=flat-square&logo=tailwind-css)
-
-## Features
 
 ### 🎨 Slide Management
 - **Create & Delete Slides**: Add new slides or remove existing ones with ease
@@ -109,30 +103,6 @@ A modern, feature-rich presentation editor built with Next.js, Fabric.js, and Re
 - **Load**: Upload a previously saved `.json` file
 - **Export**: Save individual slides as PNG images
 
-## Project Structure
-
-```
-src/
-├── app/
-│   ├── components/          # React components
-│   │   ├── Providers.tsx    # Redux provider wrapper
-│   │   ├── slideCanvas.tsx  # Main canvas component
-│   │   ├── slideList.tsx    # Sidebar slide management
-│   │   └── Toolbar.tsx      # Top toolbar with tools
-│   ├── redux/               # Redux store and slices
-│   │   ├── store.ts         # Store configuration
-│   │   └── presentationSlice.ts # Main state slice
-│   ├── utils/               # Utility functions
-│   │   └── fileHandlers.ts  # File operations
-│   ├── globals.css          # Global styles
-│   ├── layout.tsx           # Root layout
-│   └── page.tsx             # Main page component
-├── public/                  # Static assets
-└── package.json             # Dependencies and scripts
-```
-
-## API Reference
-
 ### Redux Actions
 
 ```typescript
@@ -161,61 +131,4 @@ FileHandlers.loadImageFromUrl(url: string): Promise<string>
 FileHandlers.generateThumbnail(canvas: HTMLCanvasElement): string
 ```
 
-## Deployment
-
-### Vercel (Recommended)
-
-1. **Connect your repository** to Vercel
-2. **Configure build settings** (uses default Next.js settings)
-3. **Deploy** - automatic deployments on push
-
-### Netlify
-
-1. **Build the application**
-   ```bash
-   npm run build
-   ```
-
-2. **Deploy the `out` folder** to Netlify
-
-### Manual Deployment
-
-1. **Build for production**
-   ```bash
-   npm run build
-   npm run start
-   ```
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-## License
-
-This project is open source and available under the [MIT License](LICENSE).
-
-## Support
-
-If you encounter any issues or have questions:
-
-1. Check the [Issues](../../issues) page
-2. Create a new issue with detailed information
-3. Include steps to reproduce any bugs
-
-## Roadmap
-
-- [ ] Undo/Redo functionality
-- [ ] Template library
-- [ ] Advanced text formatting
-- [ ] Animation support
-- [ ] Collaborative editing
-- [ ] Presentation mode
-- [ ] Export to PDF/PowerPoint
-
----
-
-**Built with ❤️ using Next.js, Fabric.js, and modern web technologies.**
+**Built with ❤️ by Yash.**
