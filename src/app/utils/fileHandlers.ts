@@ -13,45 +13,96 @@ export class FileHandlers {
 
   static async savePresentation(
     presentationName: string,
-    slides: Slide[]
+    slides: Slide[],
+    format: 'json' | 'pptx' = 'json'
   ): Promise<void> {
     try {
-      const data: PresentationData = {
-        name: presentationName,
-        slides,
-        version: this.CURRENT_VERSION,
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-      };
-
-      const jsonString = JSON.stringify(data, null, 2);
-      const blob = new Blob([jsonString], { type: 'application/json' });
-      
-      // Create download link
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `${presentationName.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.json`;
-      
-      // Trigger download
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      
-      // Cleanup
-      URL.revokeObjectURL(url);
+      if (format === 'json') {
+        await this.saveAsJSON(presentationName, slides);
+      } else {
+        await this.saveAsPPTX(presentationName, slides);
+      }
     } catch (error) {
-      console.error('Error saving presentation:', error);
-      throw new Error('Failed to save presentation');
+      console.error(`Error saving presentation as ${format}:`, error);
+      throw new Error(`Failed to save presentation as ${format}`);
     }
   }
+
+  private static async saveAsJSON(
+    presentationName: string,
+    slides: Slide[]
+  ): Promise<void> {
+    const data: PresentationData = {
+      name: presentationName,
+      slides,
+      version: this.CURRENT_VERSION,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    };
+
+    const jsonString = JSON.stringify(data, null, 2);
+    const blob = new Blob([jsonString], { type: 'application/json' });
+    
+    // Create download link
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${presentationName.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.json`;
+    
+    // Trigger download
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    // Cleanup
+        URL.revokeObjectURL(url);
+  }
+
+  private static async saveAsPPTX(
+    presentationName: string,
+    slides: Slide[]
+  ): Promise<void> {
+    // For now, show a user-friendly message
+    const message = `PPTX export is being developed! 
+    
+For now, you can:
+1. Save as JSON (fully supported)
+2. Export individual slides as images
+3. Copy content to PowerPoint manually
+
+We're working on full PPTX support - it will be available in a future update!`;
+
+    alert(message);
+    
+    // Fallback to JSON export
+    await this.saveAsJSON(presentationName, slides);
+  }
+
+  private static async loadPPTXFile(
+    file: File, 
+    resolve: (data: PresentationData) => void, 
+    reject: (error: Error) => void
+  ): Promise<void> {
+    const message = `PPTX import is being developed!
+
+For now, you can:
+1. Export your PowerPoint slides as images
+2. Use the Image tool to add them to your presentation
+3. Save your PowerPoint as PDF and convert pages to images
+
+We're working on full PPTX import - it will be available soon!`;
+
+    reject(new Error(message));
+  }
+
+ 
 
   static async loadPresentation(): Promise<PresentationData> {
     return new Promise((resolve, reject) => {
       try {
         const input = document.createElement('input');
         input.type = 'file';
-        input.accept = '.json';
+        input.accept = '.json,.pptx';
         
         input.onchange = async (event) => {
           const file = (event.target as HTMLInputElement).files?.[0];
@@ -61,16 +112,13 @@ export class FileHandlers {
           }
 
           try {
-            const text = await file.text();
-            const data = JSON.parse(text) as PresentationData;
-            
-            // Validate the data structure
-            if (!this.validatePresentationData(data)) {
-              reject(new Error('Invalid presentation file format'));
-              return;
+            if (file.name.toLowerCase().endsWith('.json')) {
+              await this.loadJSONFile(file, resolve, reject);
+            } else if (file.name.toLowerCase().endsWith('.pptx')) {
+              await this.loadPPTXFile(file, resolve, reject);
+            } else {
+              reject(new Error('Unsupported file format. Please select a .json or .pptx file.'));
             }
-            
-            resolve(data);
           } catch (parseError) {
             reject(new Error('Failed to parse presentation file'));
           }
@@ -86,6 +134,25 @@ export class FileHandlers {
       }
     });
   }
+
+  private static async loadJSONFile(
+    file: File, 
+    resolve: (data: PresentationData) => void, 
+    reject: (error: Error) => void
+  ): Promise<void> {
+    const text = await file.text();
+    const data = JSON.parse(text) as PresentationData;
+    
+    // Validate the data structure
+    if (!this.validatePresentationData(data)) {
+      reject(new Error('Invalid JSON presentation file format'));
+      return;
+    }
+    
+    resolve(data);
+  }
+
+
 
   static validatePresentationData(data: any): data is PresentationData {
     return (

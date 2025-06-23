@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../redux/store';
 import {
@@ -18,19 +18,27 @@ interface ToolbarProps {
   className?: string;
   onAddImageFromUrl?: (url: string) => void;
   onAddImageFromFile?: () => void;
+  onTextFormatChange?: (format: { fontSize?: number; fontWeight?: string; fontStyle?: string; textAlign?: string; fill?: string }) => void;
 }
 
 export const Toolbar: React.FC<ToolbarProps> = ({ 
   className, 
   onAddImageFromUrl, 
-  onAddImageFromFile 
+  onAddImageFromFile,
+  onTextFormatChange
 }) => {
   const dispatch = useDispatch();
   const canvasRef = useRef<any>(null);
   const [showImageUrlModal, setShowImageUrlModal] = useState(false);
   const [imageUrl, setImageUrl] = useState('');
   const [isEditingName, setIsEditingName] = useState(false);
-
+  const [showSaveDropdown, setShowSaveDropdown] = useState(false);
+  const [showTextFormatDropdown, setShowTextFormatDropdown] = useState(false);
+  const [currentFontSize, setCurrentFontSize] = useState(16);
+  const [currentTextColor, setCurrentTextColor] = useState('#000000');
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const textFormatRef = useRef<HTMLDivElement>(null);
+  
   const selectedTool = useSelector((state: RootState) => state.presentation.selectedTool);
   const presentationName = useSelector((state: RootState) => state.presentation.presentationName);
   const slides = useSelector((state: RootState) => state.presentation.slides);
@@ -39,6 +47,26 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   const isDirty = useSelector((state: RootState) => state.presentation.isDirty);
 
   const currentSlide = slides.find(slide => slide.id === currentSlideId);
+
+  // Close dropdowns when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowSaveDropdown(false);
+      }
+      if (textFormatRef.current && !textFormatRef.current.contains(event.target as Node)) {
+        setShowTextFormatDropdown(false);
+      }
+    };
+
+    if (showSaveDropdown || showTextFormatDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showSaveDropdown, showTextFormatDropdown]);
 
   const tools = [
     { id: 'select', name: 'Select', icon: 'cursor' },
@@ -58,12 +86,13 @@ export const Toolbar: React.FC<ToolbarProps> = ({
     dispatch(setSelectedTool(toolId));
   };
 
-  const handleSavePresentation = async () => {
+  const handleSavePresentation = async (format: 'json' | 'pptx' = 'json') => {
     try {
-      await FileHandlers.savePresentation(presentationName, slides);
+      await FileHandlers.savePresentation(presentationName, slides, format);
       dispatch(markAsSaved());
+      setShowSaveDropdown(false);
     } catch (error) {
-      dispatch(setError('Failed to save presentation'));
+      dispatch(setError(`Failed to save presentation as ${format.toUpperCase()}`));
     }
   };
 
@@ -114,6 +143,19 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       setIsEditingName(false);
     }
   };
+
+  const handleTextFormatChange = (format: { fontSize?: number; fontWeight?: string; fontStyle?: string; textAlign?: string; fill?: string }) => {
+    if (onTextFormatChange) {
+      onTextFormatChange(format);
+    }
+    
+    // Update local state for UI
+    if (format.fontSize) setCurrentFontSize(format.fontSize);
+    if (format.fill) setCurrentTextColor(format.fill);
+  };
+
+  const fontSizes = [8, 10, 12, 14, 16, 18, 20, 24, 28, 32, 36, 48, 64, 72];
+  const textColors = ['#000000', '#FFFFFF', '#FF0000', '#00FF00', '#0000FF', '#FFFF00', '#FF00FF', '#00FFFF', '#FFA500', '#800080', '#008000', '#FFC0CB'];
 
   const getToolIcon = (iconType: string) => {
     switch (iconType) {
@@ -190,38 +232,208 @@ export const Toolbar: React.FC<ToolbarProps> = ({
           )}
         </div>
 
-        {/* Center Section - Tools */}
-        <div className="flex items-center gap-2 bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl p-1 shadow-inner border border-gray-200">
-          {tools.map((tool) => (
-            tool.id === 'image' ? (
-              <div key={tool.id} className="relative">
+        {/* Center Section - Tools and Text Formatting */}
+        <div className="flex items-center gap-4">
+          {/* Drawing Tools */}
+          <div className="flex items-center gap-2 bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl p-1 shadow-inner border border-gray-200">
+            {tools.map((tool) => (
+              tool.id === 'image' ? (
+                <div key={tool.id} className="relative">
+                  <button
+                    className={`p-3 rounded-lg transition-all duration-200 flex items-center justify-center transform hover:scale-105 ${
+                      selectedTool === tool.id
+                        ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-md ring-2 ring-blue-200'
+                        : 'hover:bg-white hover:shadow-md text-gray-600 hover:text-gray-800 hover:ring-1 hover:ring-gray-200'
+                    }`}
+                    title={tool.name}
+                    onClick={() => setShowImageUrlModal(true)}
+                  >
+                    {getToolIcon(tool.icon)}
+                  </button>
+                </div>
+              ) : (
                 <button
+                  key={tool.id}
+                  onClick={() => handleToolSelect(tool.id)}
                   className={`p-3 rounded-lg transition-all duration-200 flex items-center justify-center transform hover:scale-105 ${
                     selectedTool === tool.id
                       ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-md ring-2 ring-blue-200'
                       : 'hover:bg-white hover:shadow-md text-gray-600 hover:text-gray-800 hover:ring-1 hover:ring-gray-200'
                   }`}
                   title={tool.name}
-                  onClick={() => setShowImageUrlModal(true)}
                 >
                   {getToolIcon(tool.icon)}
                 </button>
-              </div>
-            ) : (
+              )
+            ))}
+          </div>
+
+          {/* Text Formatting Controls */}
+          <div className="flex items-center gap-2 bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl p-1 shadow-inner border border-gray-200">
+            {/* Font Size */}
+            <div className="relative" ref={textFormatRef}>
               <button
-                key={tool.id}
-                onClick={() => handleToolSelect(tool.id)}
-                className={`p-3 rounded-lg transition-all duration-200 flex items-center justify-center transform hover:scale-105 ${
-                  selectedTool === tool.id
-                    ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-md ring-2 ring-blue-200'
-                    : 'hover:bg-white hover:shadow-md text-gray-600 hover:text-gray-800 hover:ring-1 hover:ring-gray-200'
-                }`}
-                title={tool.name}
+                onClick={() => setShowTextFormatDropdown(!showTextFormatDropdown)}
+                className="px-3 py-2 rounded-lg hover:bg-white hover:shadow-md text-gray-600 hover:text-gray-800 text-sm font-medium transition-all duration-200 flex items-center gap-1"
+                title="Text Formatting"
               >
-                {getToolIcon(tool.icon)}
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                </svg>
+                {currentFontSize}px
+                <svg className={`w-3 h-3 transition-transform duration-200 ${showTextFormatDropdown ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
               </button>
-            )
-          ))}
+
+              {/* Text Format Dropdown */}
+              {showTextFormatDropdown && (
+                <div className="absolute left-0 top-full mt-1 w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+                  <div className="p-4">
+                    <h4 className="font-medium text-gray-900 mb-3">Text Formatting</h4>
+                    
+                    {/* Font Size */}
+                    <div className="mb-4">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Font Size</label>
+                      <div className="grid grid-cols-6 gap-1">
+                        {fontSizes.map((size) => (
+                          <button
+                            key={size}
+                            onClick={() => handleTextFormatChange({ fontSize: size })}
+                            className={`px-2 py-1 text-xs rounded border transition-colors ${
+                              currentFontSize === size
+                                ? 'bg-blue-100 border-blue-300 text-blue-700'
+                                : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
+                            }`}
+                          >
+                            {size}px
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Style Buttons */}
+                    <div className="mb-4">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Style</label>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleTextFormatChange({ fontWeight: 'bold' })}
+                          className="px-3 py-2 text-sm font-bold border rounded hover:bg-gray-50 transition-colors"
+                          title="Bold"
+                        >
+                          B
+                        </button>
+                        <button
+                          onClick={() => handleTextFormatChange({ fontStyle: 'italic' })}
+                          className="px-3 py-2 text-sm italic border rounded hover:bg-gray-50 transition-colors"
+                          title="Italic"
+                        >
+                          I
+                        </button>
+                        <button
+                          onClick={() => handleTextFormatChange({ fontWeight: 'normal', fontStyle: 'normal' })}
+                          className="px-3 py-2 text-sm border rounded hover:bg-gray-50 transition-colors"
+                          title="Normal"
+                        >
+                          Normal
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Text Alignment */}
+                    <div className="mb-4">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Alignment</label>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleTextFormatChange({ textAlign: 'left' })}
+                          className="p-2 border rounded hover:bg-gray-50 transition-colors"
+                          title="Align Left"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h8m-8 6h16" />
+                          </svg>
+                        </button>
+                        <button
+                          onClick={() => handleTextFormatChange({ textAlign: 'center' })}
+                          className="p-2 border rounded hover:bg-gray-50 transition-colors"
+                          title="Align Center"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M8 12h8m-8 6h16" />
+                          </svg>
+                        </button>
+                        <button
+                          onClick={() => handleTextFormatChange({ textAlign: 'right' })}
+                          className="p-2 border rounded hover:bg-gray-50 transition-colors"
+                          title="Align Right"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M12 12h8M4 18h16" />
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Text Color */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Text Color</label>
+                      <div className="grid grid-cols-6 gap-2">
+                        {textColors.map((color) => (
+                          <button
+                            key={color}
+                            onClick={() => handleTextFormatChange({ fill: color })}
+                            className={`w-8 h-8 rounded border-2 transition-all ${
+                              currentTextColor === color
+                                ? 'border-blue-400 ring-2 ring-blue-200'
+                                : 'border-gray-300 hover:border-gray-400'
+                            }`}
+                            style={{ backgroundColor: color }}
+                            title={color}
+                          />
+                        ))}
+                      </div>
+                      
+                      {/* Custom Color Input */}
+                      <div className="mt-2 flex items-center gap-2">
+                        <input
+                          type="color"
+                          value={currentTextColor}
+                          onChange={(e) => handleTextFormatChange({ fill: e.target.value })}
+                          className="w-8 h-8 border border-gray-300 rounded cursor-pointer"
+                          title="Custom Color"
+                        />
+                        <span className="text-sm text-gray-600">Custom</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Quick Format Buttons */}
+            <button
+              onClick={() => handleTextFormatChange({ fontWeight: 'bold' })}
+              className="p-2 rounded-lg hover:bg-white hover:shadow-md text-gray-600 hover:text-gray-800 font-bold transition-all duration-200"
+              title="Bold"
+            >
+              B
+            </button>
+            <button
+              onClick={() => handleTextFormatChange({ fontStyle: 'italic' })}
+              className="p-2 rounded-lg hover:bg-white hover:shadow-md text-gray-600 hover:text-gray-800 italic transition-all duration-200"
+              title="Italic"
+            >
+              I
+            </button>
+            
+            {/* Color Indicator */}
+            <div
+              className="w-6 h-6 border-2 border-gray-300 rounded cursor-pointer"
+              style={{ backgroundColor: currentTextColor }}
+              onClick={() => setShowTextFormatDropdown(!showTextFormatDropdown)}
+              title="Text Color"
+            />
+          </div>
         </div>
 
         {/* Right Section - File Operations */}
@@ -249,20 +461,58 @@ export const Toolbar: React.FC<ToolbarProps> = ({
             Load
           </button>
           
-          <button
-            onClick={handleSavePresentation}
-            disabled={slides.length === 0}
-            className={`px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200 flex items-center gap-2 ${
-              isDirty 
-                ? 'bg-orange-600 hover:bg-orange-700 text-white' 
-                : 'bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white'
-            }`}
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3-3m0 0l-3 3m3-3v12" />
-            </svg>
-            {isDirty ? 'Save*' : 'Save'}
-          </button>
+          <div className="relative" ref={dropdownRef}>
+            <button
+              onClick={() => setShowSaveDropdown(!showSaveDropdown)}
+              disabled={slides.length === 0}
+              className={`px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200 flex items-center gap-2 ${
+                isDirty 
+                  ? 'bg-orange-600 hover:bg-orange-700 text-white' 
+                  : 'bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white'
+              }`}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3-3m0 0l-3 3m3-3v12" />
+              </svg>
+              {isDirty ? 'Save*' : 'Save'}
+              <svg className={`w-3 h-3 transition-transform duration-200 ${showSaveDropdown ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+
+            {/* Save Dropdown */}
+            {showSaveDropdown && (
+              <div className="absolute right-0 top-full mt-1 w-64 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+                <div className="p-2">
+                  <button
+                    onClick={() => handleSavePresentation('json')}
+                    className="w-full text-left px-3 py-2 rounded-md hover:bg-blue-50 transition-colors duration-200 flex items-center gap-3"
+                  >
+                    <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    <div>
+                      <div className="font-medium text-gray-900">Save as JSON</div>
+                      <div className="text-xs text-gray-500">Native format with full editing support</div>
+                    </div>
+                  </button>
+                  
+                  <button
+                    onClick={() => handleSavePresentation('pptx')}
+                    className="w-full text-left px-3 py-2 rounded-md hover:bg-orange-50 transition-colors duration-200 flex items-center gap-3"
+                  >
+                    <svg className="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                    </svg>
+                    <div>
+                      <div className="font-medium text-gray-900">Save as PowerPoint (.pptx)</div>
+                      <div className="text-xs text-orange-600">🚧 Coming soon - saves as JSON for now</div>
+                    </div>
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -319,6 +569,8 @@ export const Toolbar: React.FC<ToolbarProps> = ({
           </div>
         </div>
       )}
+
+
     </>
   );
 };

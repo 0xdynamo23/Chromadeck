@@ -34,6 +34,12 @@ export default function Home() {
     }
   };
 
+  const handleTextFormatChange = (format: { fontSize?: number; fontWeight?: string; fontStyle?: string; textAlign?: string; fill?: string }) => {
+    if (canvasRef.current?.updateSelectedTextFormat) {
+      canvasRef.current.updateSelectedTextFormat(format);
+    }
+  };
+
   return (
     <div className="h-screen flex flex-col bg-gray-50 overflow-hidden">
       {/* Toolbar */}
@@ -41,6 +47,7 @@ export default function Home() {
         <Toolbar
           onAddImageFromUrl={handleAddImageFromUrl}
           onAddImageFromFile={handleAddImageFromFile}
+          onTextFormatChange={handleTextFormatChange}
         />
       </div>
 

@@ -14,6 +14,7 @@ interface SlideCanvasProps {
 export interface SlideCanvasRef {
   addImageFromUrl: (url: string) => Promise<void>;
   addImageFromFile: () => Promise<void>;
+  updateSelectedTextFormat: (format: { fontSize?: number; fontWeight?: string; fontStyle?: string; textAlign?: string; fill?: string }) => void;
   canvas: fabric.Canvas | null;
 }
 
@@ -490,12 +491,51 @@ export const SlideCanvas = forwardRef<SlideCanvasRef, SlideCanvasProps>(({ class
     }
   };
 
+  const updateSelectedTextFormat = useCallback((format: { fontSize?: number; fontWeight?: string; fontStyle?: string; textAlign?: string; fill?: string }) => {
+    if (!fabricCanvasRef.current) return;
+
+    const activeObject = fabricCanvasRef.current.getActiveObject();
+    
+    if (activeObject && (activeObject.type === 'textbox' || activeObject.type === 'i-text' || activeObject.type === 'text')) {
+      const textObject = activeObject as fabric.Textbox;
+      
+      // Apply formatting
+      if (format.fontSize !== undefined) {
+        textObject.set('fontSize', format.fontSize);
+      }
+      if (format.fontWeight !== undefined) {
+        textObject.set('fontWeight', format.fontWeight);
+      }
+      if (format.fontStyle !== undefined) {
+        textObject.set('fontStyle', format.fontStyle);
+      }
+      if (format.textAlign !== undefined) {
+        textObject.set('textAlign', format.textAlign);
+      }
+      if (format.fill !== undefined) {
+        textObject.set('fill', format.fill);
+      }
+      
+      // Re-render the canvas
+      fabricCanvasRef.current.renderAll();
+      
+      // Save the canvas state
+      setTimeout(() => {
+        saveCanvasState();
+      }, 100);
+    } else {
+      // If no text object is selected, apply to next text object created
+      console.log('No text object selected. Format will apply to next text object created.');
+    }
+  }, [saveCanvasState]);
+
 
 
   // Expose methods to parent components
   useImperativeHandle(ref, () => ({
     addImageFromUrl,
     addImageFromFile,
+    updateSelectedTextFormat,
     canvas: fabricCanvasRef.current,
   }));
 

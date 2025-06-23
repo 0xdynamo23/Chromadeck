@@ -9,20 +9,23 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@reduxjs/toolkit": "^2.2.7",
+    "fabric": "^6.4.0",
+    "next": "15.3.4",
+    "pizzip": "^3.2.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "next": "15.3.4",
-    "@reduxjs/toolkit": "^2.2.7",
     "react-redux": "^9.1.2",
-    "fabric": "^6.4.0"
+    "util": "^0.12.5"
   },
   "devDependencies": {
-    "typescript": "^5",
+    "@tailwindcss/postcss": "^4",
+    "@types/fabric": "^5.3.7",
+    "@types/file-saver": "^2.0.7",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "@tailwindcss/postcss": "^4",
     "tailwindcss": "^4",
-    "@types/fabric": "^5.3.7"
+    "typescript": "^5"
   }
 }

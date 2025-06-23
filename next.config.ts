@@ -4,7 +4,6 @@ const nextConfig: NextConfig = {
   output: 'standalone',
   poweredByHeader: false,
   reactStrictMode: true,
-  swcMinify: true,
   experimental: {
     optimizePackageImports: ['fabric', '@reduxjs/toolkit'],
   },
@@ -12,13 +11,21 @@ const nextConfig: NextConfig = {
     removeConsole: process.env.NODE_ENV === 'production',
   },
   webpack: (config, { isServer }) => {
-    // Optimize for Fabric.js
+    // Optimize for Fabric.js and JSZip
     if (!isServer) {
       config.resolve.fallback = {
         ...config.resolve.fallback,
         fs: false,
         net: false,
         tls: false,
+        crypto: false,
+        stream: false,
+        util: false,
+        buffer: false,
+        inherits: false,
+        events: false,
+        path: false,
+        os: false,
       };
     }
     
