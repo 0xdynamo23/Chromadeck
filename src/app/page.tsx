@@ -40,6 +40,12 @@ export default function Home() {
     }
   };
 
+  const handleShapeFormatChange = (format: { fill?: string; stroke?: string; strokeWidth?: number }) => {
+    if (canvasRef.current?.updateSelectedShapeFormat) {
+      canvasRef.current.updateSelectedShapeFormat(format);
+    }
+  };
+
   return (
     <div className="h-screen flex flex-col bg-gray-50 overflow-hidden">
       {/* Toolbar */}
@@ -48,6 +54,7 @@ export default function Home() {
           onAddImageFromUrl={handleAddImageFromUrl}
           onAddImageFromFile={handleAddImageFromFile}
           onTextFormatChange={handleTextFormatChange}
+          onShapeFormatChange={handleShapeFormatChange}
         />
       </div>
 

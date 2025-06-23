@@ -19,13 +19,15 @@ interface ToolbarProps {
   onAddImageFromUrl?: (url: string) => void;
   onAddImageFromFile?: () => void;
   onTextFormatChange?: (format: { fontSize?: number; fontWeight?: string; fontStyle?: string; textAlign?: string; fill?: string }) => void;
+  onShapeFormatChange?: (format: { fill?: string; stroke?: string; strokeWidth?: number }) => void;
 }
 
 export const Toolbar: React.FC<ToolbarProps> = ({ 
   className, 
   onAddImageFromUrl, 
   onAddImageFromFile,
-  onTextFormatChange
+  onTextFormatChange,
+  onShapeFormatChange
 }) => {
   const dispatch = useDispatch();
   const canvasRef = useRef<any>(null);
@@ -34,10 +36,15 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   const [isEditingName, setIsEditingName] = useState(false);
   const [showSaveDropdown, setShowSaveDropdown] = useState(false);
   const [showTextFormatDropdown, setShowTextFormatDropdown] = useState(false);
+  const [showShapeFormatDropdown, setShowShapeFormatDropdown] = useState(false);
   const [currentFontSize, setCurrentFontSize] = useState(16);
   const [currentTextColor, setCurrentTextColor] = useState('#000000');
+  const [currentFillColor, setCurrentFillColor] = useState('#000000');
+  const [currentBorderColor, setCurrentBorderColor] = useState('#2563eb');
+  const [currentBorderWidth, setCurrentBorderWidth] = useState(3);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const textFormatRef = useRef<HTMLDivElement>(null);
+  const shapeFormatRef = useRef<HTMLDivElement>(null);
   
   const selectedTool = useSelector((state: RootState) => state.presentation.selectedTool);
   const presentationName = useSelector((state: RootState) => state.presentation.presentationName);
@@ -57,16 +64,19 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       if (textFormatRef.current && !textFormatRef.current.contains(event.target as Node)) {
         setShowTextFormatDropdown(false);
       }
+      if (shapeFormatRef.current && !shapeFormatRef.current.contains(event.target as Node)) {
+        setShowShapeFormatDropdown(false);
+      }
     };
 
-    if (showSaveDropdown || showTextFormatDropdown) {
+    if (showSaveDropdown || showTextFormatDropdown || showShapeFormatDropdown) {
       document.addEventListener('mousedown', handleClickOutside);
     }
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [showSaveDropdown, showTextFormatDropdown]);
+  }, [showSaveDropdown, showTextFormatDropdown, showShapeFormatDropdown]);
 
   const tools = [
     { id: 'select', name: 'Select', icon: 'cursor' },
@@ -154,8 +164,20 @@ export const Toolbar: React.FC<ToolbarProps> = ({
     if (format.fill) setCurrentTextColor(format.fill);
   };
 
+  const handleShapeFormatChange = (format: { fill?: string; stroke?: string; strokeWidth?: number }) => {
+    if (onShapeFormatChange) {
+      onShapeFormatChange(format);
+    }
+    
+    // Update local state for UI
+    if (format.fill) setCurrentFillColor(format.fill);
+    if (format.stroke) setCurrentBorderColor(format.stroke);
+    if (format.strokeWidth) setCurrentBorderWidth(format.strokeWidth);
+  };
+
   const fontSizes = [8, 10, 12, 14, 16, 18, 20, 24, 28, 32, 36, 48, 64, 72];
-  const textColors = ['#000000', '#FFFFFF', '#FF0000', '#00FF00', '#0000FF', '#FFFF00', '#FF00FF', '#00FFFF', '#FFA500', '#800080', '#008000', '#FFC0CB'];
+  const colors = ['#000000', '#FFFFFF', '#FF0000', '#00FF00', '#0000FF', '#FFFF00', '#FF00FF', '#00FFFF', '#FFA500', '#800080', '#008000', '#FFC0CB'];
+  const borderWidths = [1, 2, 3, 4, 5, 6, 8, 10];
 
   const getToolIcon = (iconType: string) => {
     switch (iconType) {
@@ -232,7 +254,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
           )}
         </div>
 
-        {/* Center Section - Tools and Text Formatting */}
+        {/* Center Section - Tools and Formatting */}
         <div className="flex items-center gap-4">
           {/* Drawing Tools */}
           <div className="flex items-center gap-2 bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl p-1 shadow-inner border border-gray-200">
@@ -266,6 +288,134 @@ export const Toolbar: React.FC<ToolbarProps> = ({
                 </button>
               )
             ))}
+          </div>
+
+          {/* Shape Formatting Controls */}
+          <div className="flex items-center gap-2 bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl p-1 shadow-inner border border-gray-200">
+            <div className="relative" ref={shapeFormatRef}>
+              <button
+                onClick={() => setShowShapeFormatDropdown(!showShapeFormatDropdown)}
+                className="px-3 py-2 rounded-lg hover:bg-white hover:shadow-md text-gray-600 hover:text-gray-800 text-sm font-medium transition-all duration-200 flex items-center gap-2"
+                title="Shape Formatting"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zM21 5a2 2 0 00-2-2h-4a2 2 0 00-2 2v12a4 4 0 004 4h4a2 2 0 002-2V5z" />
+                </svg>
+                Shapes
+                <svg className={`w-3 h-3 transition-transform duration-200 ${showShapeFormatDropdown ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+
+              {/* Shape Format Dropdown */}
+              {showShapeFormatDropdown && (
+                <div className="absolute left-0 top-full mt-1 w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+                  <div className="p-4">
+                    <h4 className="font-medium text-gray-900 mb-3">Shape Formatting</h4>
+                    
+                    {/* Fill Color */}
+                    <div className="mb-4">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Fill Color</label>
+                      <div className="grid grid-cols-6 gap-2">
+                        {colors.map((color) => (
+                          <button
+                            key={color}
+                            onClick={() => handleShapeFormatChange({ fill: color })}
+                            className={`w-8 h-8 rounded border-2 transition-all ${
+                              currentFillColor === color
+                                ? 'border-blue-400 ring-2 ring-blue-200'
+                                : 'border-gray-300 hover:border-gray-400'
+                            }`}
+                            style={{ backgroundColor: color }}
+                            title={color}
+                          />
+                        ))}
+                      </div>
+                      
+                      {/* Custom Fill Color */}
+                      <div className="mt-2 flex items-center gap-2">
+                        <input
+                          type="color"
+                          value={currentFillColor}
+                          onChange={(e) => handleShapeFormatChange({ fill: e.target.value })}
+                          className="w-8 h-8 border border-gray-300 rounded cursor-pointer"
+                          title="Custom Fill Color"
+                        />
+                        <span className="text-sm text-gray-600">Custom Fill</span>
+                      </div>
+                    </div>
+
+                    {/* Border Color */}
+                    <div className="mb-4">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Border Color</label>
+                      <div className="grid grid-cols-6 gap-2">
+                        {colors.map((color) => (
+                          <button
+                            key={color}
+                            onClick={() => handleShapeFormatChange({ stroke: color })}
+                            className={`w-8 h-8 rounded border-2 transition-all ${
+                              currentBorderColor === color
+                                ? 'border-blue-400 ring-2 ring-blue-200'
+                                : 'border-gray-300 hover:border-gray-400'
+                            }`}
+                            style={{ backgroundColor: color }}
+                            title={color}
+                          />
+                        ))}
+                      </div>
+                      
+                      {/* Custom Border Color */}
+                      <div className="mt-2 flex items-center gap-2">
+                        <input
+                          type="color"
+                          value={currentBorderColor}
+                          onChange={(e) => handleShapeFormatChange({ stroke: e.target.value })}
+                          className="w-8 h-8 border border-gray-300 rounded cursor-pointer"
+                          title="Custom Border Color"
+                        />
+                        <span className="text-sm text-gray-600">Custom Border</span>
+                      </div>
+                    </div>
+
+                    {/* Border Width */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Border Width</label>
+                      <div className="grid grid-cols-4 gap-2">
+                        {borderWidths.map((width) => (
+                          <button
+                            key={width}
+                            onClick={() => handleShapeFormatChange({ strokeWidth: width })}
+                            className={`px-3 py-2 text-sm rounded border transition-colors ${
+                              currentBorderWidth === width
+                                ? 'bg-blue-100 border-blue-300 text-blue-700'
+                                : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
+                            }`}
+                          >
+                            {width}px
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Quick Shape Format Indicators */}
+            <div className="flex items-center gap-1">
+              <div
+                className="w-6 h-6 border-2 border-gray-300 rounded cursor-pointer"
+                style={{ backgroundColor: currentFillColor }}
+                onClick={() => setShowShapeFormatDropdown(!showShapeFormatDropdown)}
+                title="Fill Color"
+              />
+              <div
+                className="w-6 h-6 border-2 rounded cursor-pointer"
+                style={{ borderColor: currentBorderColor, backgroundColor: 'transparent' }}
+                onClick={() => setShowShapeFormatDropdown(!showShapeFormatDropdown)}
+                title="Border Color"
+              />
+            </div>
           </div>
 
           {/* Text Formatting Controls */}
@@ -378,7 +528,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">Text Color</label>
                       <div className="grid grid-cols-6 gap-2">
-                        {textColors.map((color) => (
+                        {colors.map((color) => (
                           <button
                             key={color}
                             onClick={() => handleTextFormatChange({ fill: color })}
@@ -448,7 +598,6 @@ export const Toolbar: React.FC<ToolbarProps> = ({
             </svg>
             New
           </button>
-
 
           
           <button

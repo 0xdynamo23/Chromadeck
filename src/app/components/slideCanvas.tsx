@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef, useCallback, forwardRef, useImperativeHandle, useMemo } from 'react';
+import React, { useEffect, useRef, useCallback, forwardRef, useImperativeHandle, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import * as fabric from 'fabric';
 import { RootState } from '../redux/store';
@@ -15,6 +15,7 @@ export interface SlideCanvasRef {
   addImageFromUrl: (url: string) => Promise<void>;
   addImageFromFile: () => Promise<void>;
   updateSelectedTextFormat: (format: { fontSize?: number; fontWeight?: string; fontStyle?: string; textAlign?: string; fill?: string }) => void;
+  updateSelectedShapeFormat: (format: { fill?: string; stroke?: string; strokeWidth?: number }) => void;
   canvas: fabric.Canvas | null;
 }
 
@@ -23,13 +24,18 @@ export const SlideCanvas = forwardRef<SlideCanvasRef, SlideCanvasProps>(({ class
   const fabricCanvasRef = useRef<fabric.Canvas | null>(null);
   const dispatch = useDispatch();
   
+  // Shape formatting state
+  const [currentShapeFormat, setCurrentShapeFormat] = useState({
+    fill: '#000000',
+    stroke: '#2563eb',
+    strokeWidth: 3
+  });
+  
   const currentSlideId = useSelector((state: RootState) => state.presentation.currentSlideId);
   const slides = useSelector((state: RootState) => state.presentation.slides);
   const selectedTool = useSelector((state: RootState) => state.presentation.selectedTool);
 
   const currentSlide = slides.find(slide => slide.id === currentSlideId);
-
-
 
   const addTextBox = useCallback((x: number, y: number) => {
     if (!fabricCanvasRef.current) return;
@@ -94,9 +100,9 @@ export const SlideCanvas = forwardRef<SlideCanvasRef, SlideCanvasProps>(({ class
       top: adjustedY,
       width: rectWidth,
       height: rectHeight,
-      fill: '#000000',
-      stroke: '#2563eb',
-      strokeWidth: 3,
+      fill: currentShapeFormat.fill,
+      stroke: currentShapeFormat.stroke,
+      strokeWidth: currentShapeFormat.strokeWidth,
       selectable: true,
       evented: true,
       visible: true,
@@ -115,7 +121,7 @@ export const SlideCanvas = forwardRef<SlideCanvasRef, SlideCanvasProps>(({ class
     
     // Auto-switch back to select after creating rectangle
     setTimeout(() => dispatch(setSelectedTool('select')), 100);
-  }, [dispatch]);
+  }, [dispatch, currentShapeFormat]);
 
   const addCircle = useCallback((x: number, y: number) => {
     if (!fabricCanvasRef.current) return;
@@ -130,9 +136,9 @@ export const SlideCanvas = forwardRef<SlideCanvasRef, SlideCanvasProps>(({ class
       left: adjustedX,
       top: adjustedY,
       radius: radius,
-      fill: '#000000',
-      stroke: '#2563eb',
-      strokeWidth: 3,
+      fill: currentShapeFormat.fill,
+      stroke: currentShapeFormat.stroke,
+      strokeWidth: currentShapeFormat.strokeWidth,
       selectable: true,
       evented: true,
       visible: true,
@@ -151,7 +157,7 @@ export const SlideCanvas = forwardRef<SlideCanvasRef, SlideCanvasProps>(({ class
     
     // Auto-switch back to select after creating circle
     setTimeout(() => dispatch(setSelectedTool('select')), 100);
-  }, [dispatch]);
+  }, [dispatch, currentShapeFormat]);
 
   const addLine = useCallback((x: number, y: number) => {
     if (!fabricCanvasRef.current) return;
@@ -164,8 +170,8 @@ export const SlideCanvas = forwardRef<SlideCanvasRef, SlideCanvasProps>(({ class
     const adjustedY = Math.max(10, Math.min(y, canvas.height! - 10));
 
     const line = new fabric.Line([startX, adjustedY, endX, adjustedY], {
-      stroke: '#2563eb',
-      strokeWidth: 4,
+      stroke: currentShapeFormat.stroke,
+      strokeWidth: currentShapeFormat.strokeWidth,
       selectable: true,
       evented: true,
       strokeLineCap: 'round',
@@ -183,7 +189,7 @@ export const SlideCanvas = forwardRef<SlideCanvasRef, SlideCanvasProps>(({ class
     
     // Auto-switch back to select after creating line
     setTimeout(() => dispatch(setSelectedTool('select')), 100);
-  }, [dispatch]);
+  }, [dispatch, currentShapeFormat]);
 
   // Initialize Fabric.js canvas
   useEffect(() => {
@@ -529,15 +535,74 @@ export const SlideCanvas = forwardRef<SlideCanvasRef, SlideCanvasProps>(({ class
     }
   }, [saveCanvasState]);
 
+  const updateSelectedShapeFormat = useCallback((format: { fill?: string; stroke?: string; strokeWidth?: number }) => {
+    if (!fabricCanvasRef.current) return;
 
+    const activeObject = fabricCanvasRef.current.getActiveObject();
+    if (!activeObject) return;
+
+    // Update current shape format state
+    setCurrentShapeFormat(prev => ({
+      ...prev,
+      ...format
+    }));
+
+    // Apply formatting to selected object
+    if (activeObject.type === 'rect' || activeObject.type === 'circle') {
+      if (format.fill !== undefined) {
+        activeObject.set('fill', format.fill);
+      }
+      if (format.stroke !== undefined) {
+        activeObject.set('stroke', format.stroke);
+      }
+      if (format.strokeWidth !== undefined) {
+        activeObject.set('strokeWidth', format.strokeWidth);
+      }
+    } else if (activeObject.type === 'line') {
+      if (format.stroke !== undefined) {
+        activeObject.set('stroke', format.stroke);
+      }
+      if (format.strokeWidth !== undefined) {
+        activeObject.set('strokeWidth', format.strokeWidth);
+      }
+    } else if (activeObject.type === 'group') {
+      // Handle grouped objects
+      (activeObject as fabric.Group).forEachObject((obj) => {
+        if (obj.type === 'rect' || obj.type === 'circle') {
+          if (format.fill !== undefined) {
+            obj.set('fill', format.fill);
+          }
+          if (format.stroke !== undefined) {
+            obj.set('stroke', format.stroke);
+          }
+          if (format.strokeWidth !== undefined) {
+            obj.set('strokeWidth', format.strokeWidth);
+          }
+        } else if (obj.type === 'line') {
+          if (format.stroke !== undefined) {
+            obj.set('stroke', format.stroke);
+          }
+          if (format.strokeWidth !== undefined) {
+            obj.set('strokeWidth', format.strokeWidth);
+          }
+        }
+      });
+    }
+
+    fabricCanvasRef.current.renderAll();
+    
+    // Save canvas state
+    saveCanvasState();
+  }, [saveCanvasState]);
 
   // Expose methods to parent components
   useImperativeHandle(ref, () => ({
     addImageFromUrl,
     addImageFromFile,
     updateSelectedTextFormat,
+    updateSelectedShapeFormat,
     canvas: fabricCanvasRef.current,
-  }));
+  }), [addImageFromUrl, addImageFromFile, updateSelectedTextFormat, updateSelectedShapeFormat]);
 
   if (!currentSlide) {
     return (
