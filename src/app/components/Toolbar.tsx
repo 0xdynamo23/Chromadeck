@@ -31,12 +31,12 @@ export const Toolbar: React.FC<ToolbarProps> = ({
 }) => {
   const dispatch = useDispatch();
   const canvasRef = useRef<any>(null);
-  const [showImageUrlModal, setShowImageUrlModal] = useState(false);
   const [imageUrl, setImageUrl] = useState('');
   const [isEditingName, setIsEditingName] = useState(false);
   const [showSaveDropdown, setShowSaveDropdown] = useState(false);
   const [showTextFormatDropdown, setShowTextFormatDropdown] = useState(false);
   const [showShapeFormatDropdown, setShowShapeFormatDropdown] = useState(false);
+  const [showImageOptions, setShowImageOptions] = useState(false);
   const [currentFontSize, setCurrentFontSize] = useState(16);
   const [currentTextColor, setCurrentTextColor] = useState('#000000');
   const [currentFillColor, setCurrentFillColor] = useState('#000000');
@@ -45,6 +45,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   const dropdownRef = useRef<HTMLDivElement>(null);
   const textFormatRef = useRef<HTMLDivElement>(null);
   const shapeFormatRef = useRef<HTMLDivElement>(null);
+  const imageOptionsRef = useRef<HTMLDivElement>(null);
   
   const selectedTool = useSelector((state: RootState) => state.presentation.selectedTool);
   const presentationName = useSelector((state: RootState) => state.presentation.presentationName);
@@ -67,16 +68,19 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       if (shapeFormatRef.current && !shapeFormatRef.current.contains(event.target as Node)) {
         setShowShapeFormatDropdown(false);
       }
+      if (imageOptionsRef.current && !imageOptionsRef.current.contains(event.target as Node)) {
+        setShowImageOptions(false);
+      }
     };
 
-    if (showSaveDropdown || showTextFormatDropdown || showShapeFormatDropdown) {
+    if (showSaveDropdown || showTextFormatDropdown || showShapeFormatDropdown || showImageOptions) {
       document.addEventListener('mousedown', handleClickOutside);
     }
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [showSaveDropdown, showTextFormatDropdown, showShapeFormatDropdown]);
+  }, [showSaveDropdown, showTextFormatDropdown, showShapeFormatDropdown, showImageOptions]);
 
   const tools = [
     { id: 'select', name: 'Select', icon: 'cursor' },
@@ -90,6 +94,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   const handleToolSelect = (toolId: typeof selectedTool) => {
     if (toolId === 'image') {
       // Show image options instead of selecting the tool
+      setShowImageOptions(!showImageOptions);
       return;
     }
     console.log('🔧 Tool selected:', toolId);
@@ -119,13 +124,14 @@ export const Toolbar: React.FC<ToolbarProps> = ({
     if (imageUrl.trim() && onAddImageFromUrl) {
       onAddImageFromUrl(imageUrl.trim());
       setImageUrl('');
-      setShowImageUrlModal(false);
+      setShowImageOptions(false);
     }
   };
 
   const handleAddImageFromFile = () => {
     if (onAddImageFromFile) {
       onAddImageFromFile();
+      setShowImageOptions(false);
     }
   };
 
@@ -260,18 +266,75 @@ export const Toolbar: React.FC<ToolbarProps> = ({
           <div className="flex items-center gap-2 bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl p-1 shadow-inner border border-gray-200">
             {tools.map((tool) => (
               tool.id === 'image' ? (
-                <div key={tool.id} className="relative">
+                <div key={tool.id} className="relative" ref={imageOptionsRef}>
                   <button
                     className={`p-3 rounded-lg transition-all duration-200 flex items-center justify-center transform hover:scale-105 ${
-                      selectedTool === tool.id
-                        ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-md ring-2 ring-blue-200'
+                      showImageOptions
+                        ? 'bg-gray-200 border border-gray-300 text-gray-800 shadow-sm'
                         : 'hover:bg-white hover:shadow-md text-gray-600 hover:text-gray-800 hover:ring-1 hover:ring-gray-200'
                     }`}
                     title={tool.name}
-                    onClick={() => setShowImageUrlModal(true)}
+                    onClick={() => handleToolSelect(tool.id)}
                   >
                     {getToolIcon(tool.icon)}
                   </button>
+
+                  {/* Image Options Dropdown */}
+                  {showImageOptions && (
+                    <div className="absolute left-0 top-full mt-1 w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+                      <div className="p-4">
+                        <h4 className="font-medium text-gray-900 mb-3">Add Image</h4>
+                        
+                        {/* Drag & Drop Info */}
+                        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                          <div className="flex items-center gap-2">
+                            <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <span className="text-sm text-blue-800 font-medium">Drag & drop images directly onto the canvas!</span>
+                          </div>
+                        </div>
+
+                        {/* URL Input */}
+                        <div className="mb-4">
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Or add from URL
+                          </label>
+                          <input
+                            type="url"
+                            value={imageUrl}
+                            onChange={(e) => setImageUrl(e.target.value)}
+                            placeholder="https://example.com/image.jpg"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            onKeyDown={(e) => e.key === 'Enter' && handleAddImageFromUrl()}
+                          />
+                          <button
+                            onClick={handleAddImageFromUrl}
+                            disabled={!imageUrl.trim()}
+                            className="mt-2 w-full bg-blue-100 border border-blue-300 hover:bg-blue-200 disabled:bg-gray-200 disabled:cursor-not-allowed text-blue-800 px-4 py-2 rounded-md text-sm font-medium transition-colors duration-200"
+                          >
+                            Add from URL
+                          </button>
+                        </div>
+
+                        {/* File Upload */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Or browse files
+                          </label>
+                          <button
+                            onClick={handleAddImageFromFile}
+                            className="w-full bg-green-100 border border-green-300 hover:bg-green-200 text-green-800 px-4 py-2 rounded-md text-sm font-medium transition-colors duration-200 flex items-center justify-center gap-2"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                            </svg>
+                            Choose File
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <button
@@ -279,7 +342,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
                   onClick={() => handleToolSelect(tool.id)}
                   className={`p-3 rounded-lg transition-all duration-200 flex items-center justify-center transform hover:scale-105 ${
                     selectedTool === tool.id
-                      ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-md ring-2 ring-blue-200'
+                      ? 'bg-gray-200 border border-gray-300 text-gray-800 shadow-sm'
                       : 'hover:bg-white hover:shadow-md text-gray-600 hover:text-gray-800 hover:ring-1 hover:ring-gray-200'
                   }`}
                   title={tool.name}
@@ -291,17 +354,17 @@ export const Toolbar: React.FC<ToolbarProps> = ({
           </div>
 
           {/* Shape Formatting Controls */}
-          <div className="flex items-center gap-2 bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl p-1 shadow-inner border border-gray-200">
+          <div className="flex items-center gap-2">
             <div className="relative" ref={shapeFormatRef}>
               <button
                 onClick={() => setShowShapeFormatDropdown(!showShapeFormatDropdown)}
-                className="px-3 py-2 rounded-lg hover:bg-white hover:shadow-md text-gray-600 hover:text-gray-800 text-sm font-medium transition-all duration-200 flex items-center gap-2"
+                className="px-3 py-2 rounded-lg hover:bg-white hover:shadow-md text-gray-600 hover:text-gray-800 text-sm font-medium transition-all duration-200 flex items-center gap-1"
                 title="Shape Formatting"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zM21 5a2 2 0 00-2-2h-4a2 2 0 00-2 2v12a4 4 0 004 4h4a2 2 0 002-2V5z" />
                 </svg>
-                Shapes
+                Shape
                 <svg className={`w-3 h-3 transition-transform duration-200 ${showShapeFormatDropdown ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>
@@ -373,14 +436,14 @@ export const Toolbar: React.FC<ToolbarProps> = ({
                           className="w-8 h-8 border border-gray-300 rounded cursor-pointer"
                           title="Custom Border Color"
                         />
-                        <span className="text-sm text-gray-600">Custom Border</span>
+                        <span className="text-sm text-black">Custom Border</span>
                       </div>
                     </div>
 
                     {/* Border Width */}
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Border Width</label>
-                      <div className="grid grid-cols-4 gap-2">
+                      <label className="block text-sm font-medium text-black mb-2">Border Width</label>
+                      <div className="grid grid-cols-4 gap-2 text-black">
                         {borderWidths.map((width) => (
                           <button
                             key={width}
@@ -419,7 +482,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
           </div>
 
           {/* Text Formatting Controls */}
-          <div className="flex items-center gap-2 bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl p-1 shadow-inner border border-gray-200">
+          <div className="flex items-center gap-2 text-black">
             {/* Font Size */}
             <div className="relative" ref={textFormatRef}>
               <button
@@ -587,37 +650,49 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         </div>
 
         {/* Right Section - File Operations */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
+          {/* Add Slide Button */}
           <button
-            onClick={handleNewPresentation}
-            className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200 flex items-center gap-2"
-            title="New Presentation"
+            onClick={handleAddSlide}
+            className="px-3 py-2 rounded-md bg-white border border-gray-300 hover:bg-gray-50 text-gray-800 text-sm font-medium transition-all duration-200 flex items-center gap-2 shadow-sm hover:shadow-md"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
             </svg>
-            New
+            Slide
           </button>
 
-          
+          {/* Load Button */}
           <button
             onClick={handleLoadPresentation}
-            className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200 flex items-center gap-2"
+            className="px-3 py-2 rounded-md bg-white border border-gray-300 hover:bg-gray-50 text-gray-800 text-sm font-medium transition-all duration-200 flex items-center gap-2 shadow-sm hover:shadow-md"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 12l2 2 4-4" />
             </svg>
             Load
           </button>
-          
+
+          {/* New Button */}
+          <button
+            onClick={handleNewPresentation}
+            className="px-3 py-2 rounded-md bg-white border border-gray-300 hover:bg-gray-50 text-gray-800 text-sm font-medium transition-all duration-200 flex items-center gap-2 shadow-sm hover:shadow-md"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+            </svg>
+            New
+          </button>
+
+          {/* Save Dropdown */}
           <div className="relative" ref={dropdownRef}>
             <button
               onClick={() => setShowSaveDropdown(!showSaveDropdown)}
               disabled={slides.length === 0}
               className={`px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200 flex items-center gap-2 ${
                 isDirty 
-                  ? 'bg-orange-600 hover:bg-orange-700 text-white' 
-                  : 'bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white'
+                  ? 'bg-orange-100 border border-orange-300 hover:bg-orange-200 text-orange-800' 
+                  : 'bg-blue-100 border border-blue-300 hover:bg-blue-200 disabled:bg-gray-200 disabled:cursor-not-allowed text-blue-800'
               }`}
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -632,7 +707,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
             {/* Save Dropdown */}
             {showSaveDropdown && (
               <div className="absolute right-0 top-full mt-1 w-64 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
-                <div className="p-2">
+                <div className="py-2">
                   <button
                     onClick={() => handleSavePresentation('json')}
                     className="w-full text-left px-3 py-2 rounded-md hover:bg-blue-50 transition-colors duration-200 flex items-center gap-3"
@@ -642,7 +717,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
                     </svg>
                     <div>
                       <div className="font-medium text-gray-900">Save as JSON</div>
-                      <div className="text-xs text-gray-500">Native format with full editing support</div>
+                      <div className="text-xs text-blue-600">Native format with full editing support</div>
                     </div>
                   </button>
                   
@@ -664,62 +739,6 @@ export const Toolbar: React.FC<ToolbarProps> = ({
           </div>
         </div>
       </div>
-
-      {/* Image URL Modal */}
-      {showImageUrlModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
-            <h3 className="text-lg font-semibold mb-4">Add Image</h3>
-            
-            <div className="space-y-4">
-              {/* URL Input */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Image URL
-                </label>
-                <input
-                  type="url"
-                  value={imageUrl}
-                  onChange={(e) => setImageUrl(e.target.value)}
-                  placeholder="https://example.com/image.jpg"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  onKeyDown={(e) => e.key === 'Enter' && handleAddImageFromUrl()}
-                />
-              </div>
-
-              {/* Buttons */}
-              <div className="flex gap-3">
-                <button
-                  onClick={handleAddImageFromUrl}
-                  disabled={!imageUrl.trim()}
-                  className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white px-4 py-2 rounded-md text-sm font-medium transition-colors duration-200"
-                >
-                  Add from URL
-                </button>
-                
-                <button
-                  onClick={handleAddImageFromFile}
-                  className="flex-1 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors duration-200"
-                >
-                  Upload File
-                </button>
-              </div>
-
-              <button
-                onClick={() => {
-                  setShowImageUrlModal(false);
-                  setImageUrl('');
-                }}
-                className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-md text-sm font-medium transition-colors duration-200"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-
     </>
   );
 };

@@ -80,9 +80,9 @@ export const SlideList: React.FC<SlideListProps> = ({ className }) => {
           <h2 className="text-lg font-bold text-gray-800 tracking-tight">Slides</h2>
           <span className="text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded-full">{slides.length}</span>
         </div>
-        <button
+                          <button
           onClick={handleAddSlide}
-          className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-3 py-3 rounded-lg text-sm font-medium transition-all duration-200 flex items-center justify-center gap-2 shadow-md hover:shadow-lg transform hover:scale-105"
+          className="w-full bg-white border border-gray-300 hover:bg-gray-50 text-gray-800 px-3 py-3 rounded-lg text-sm font-medium transition-all duration-200 flex items-center justify-center gap-2 shadow-sm hover:shadow-md"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -111,7 +111,7 @@ export const SlideList: React.FC<SlideListProps> = ({ className }) => {
                 }`}
               >
                 {/* Slide Number */}
-                <div className="absolute -top-2 -left-2 bg-gray-600 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center font-medium z-10">
+                                  <div className="absolute -top-2 -left-2 bg-white border border-gray-300 text-gray-800 text-xs rounded-full w-6 h-6 flex items-center justify-center font-medium z-10 shadow-sm">
                   {index + 1}
                 </div>
 

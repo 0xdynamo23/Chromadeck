@@ -38,12 +38,13 @@ const presentationSlice = createSlice({
   initialState,
   reducers: {
     addSlide: (state, action: PayloadAction<{ name?: string }>) => {
+      const timestamp = Date.now();
       const newSlide: Slide = {
-        id: `slide-${Date.now()}`,
+        id: `slide-${timestamp}-${Math.random().toString(36).substr(2, 9)}`,
         name: action.payload.name || `Slide ${state.slides.length + 1}`,
         canvasData: JSON.stringify({ objects: [], background: '#ffffff' }),
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
+        createdAt: timestamp,
+        updatedAt: timestamp,
       };
       state.slides.push(newSlide);
       if (!state.currentSlideId) {
@@ -100,12 +101,13 @@ const presentationSlice = createSlice({
     duplicateSlide: (state, action: PayloadAction<string>) => {
       const originalSlide = state.slides.find(slide => slide.id === action.payload);
       if (originalSlide) {
+        const timestamp = Date.now();
         const duplicatedSlide: Slide = {
           ...originalSlide,
-          id: `slide-${Date.now()}`,
+          id: `slide-${timestamp}-${Math.random().toString(36).substr(2, 9)}`,
           name: `${originalSlide.name} (Copy)`,
-          createdAt: Date.now(),
-          updatedAt: Date.now(),
+          createdAt: timestamp,
+          updatedAt: timestamp,
         };
         const originalIndex = state.slides.findIndex(slide => slide.id === action.payload);
         state.slides.splice(originalIndex + 1, 0, duplicatedSlide);

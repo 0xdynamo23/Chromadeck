@@ -33,9 +33,124 @@ A modern, feature-rich presentation editor built with Next.js, Fabric.js, and Re
 ### 🎯 Modern UI (Tailwind CSS)
 - **Responsive Design**: Works on desktop and tablet devices
 - **Left Sidebar**: Slide thumbnails and management
-- **Center Canvas**: Main editing area
+- **Center Canvas**: Main editing area with drag-and-drop support
 - **Top Toolbar**: Tools and file operations
-- **Modern Styling**: Clean, professional interface
+- **Clean Styling**: Professional, accessible interface with proper contrast
+
+## Development Approach
+
+### Architecture Overview
+
+This presentation app was built with a **component-based architecture** using modern React patterns and TypeScript for type safety. The application follows a **unidirectional data flow** pattern with Redux Toolkit for state management.
+
+#### **1. Frontend Architecture (React + TypeScript)**
+
+**Component Structure:**
+```
+src/app/
+├── components/           # Reusable UI components
+│   ├── slideCanvas.tsx   # Main canvas component (Fabric.js)
+│   ├── slideList.tsx     # Sidebar slide management
+│   ├── Toolbar.tsx       # Top toolbar with tools
+│   └── Providers.tsx     # Redux and other providers
+├── redux/               # State management
+│   ├── store.ts         # Redux store configuration
+│   └── presentationSlice.ts # Main state slice
+├── utils/               # Utility functions
+│   └── fileHandlers.ts  # File operations
+└── page.tsx            # Main app entry point
+```
+
+**Design Principles:**
+- **Single Responsibility**: Each component has a clear, focused purpose
+- **Composition over Inheritance**: Components are composed together
+- **Type Safety**: Full TypeScript coverage for props, state, and APIs
+- **Performance**: React.memo, useCallback, and useMemo for optimization
+- **Accessibility**: Proper ARIA labels, keyboard navigation, semantic HTML
+
+#### **2. Canvas Management (Fabric.js Integration)**
+
+**Canvas Architecture:**
+```typescript
+// Canvas wrapper with imperative handle
+const SlideCanvas = forwardRef<SlideCanvasRef, SlideCanvasProps>()
+
+// Exposed methods to parent components
+interface SlideCanvasRef {
+  addImageFromUrl: (url: string) => Promise<void>
+  addImageFromFile: () => Promise<void>
+  updateSelectedTextFormat: (format) => void
+  updateSelectedShapeFormat: (format) => void
+  canvas: fabric.Canvas | null
+}
+```
+
+**Key Design Decisions:**
+- **Fabric.js Canvas**: Chosen for its robust 2D canvas manipulation capabilities
+- **JSON Serialization**: Each slide stored as Fabric.js JSON for persistence
+- **Debounced Saves**: Prevent excessive state updates during user interactions
+- **Canvas Lifecycle**: Proper setup, cleanup, and memory management
+- **Event Handling**: Mouse, keyboard, and drag-and-drop event management
+
+#### **3. State Management (Redux Toolkit)**
+
+**State Architecture:**
+```typescript
+interface PresentationState {
+  slides: Slide[]                    // Array of slides
+  currentSlideId: string | null      // Active slide
+  presentationName: string           // Presentation title
+  selectedTool: ToolType             // Current editing tool
+  isDirty: boolean                   // Unsaved changes flag
+  lastSaved: number | null           // Last save timestamp
+  error: string | null               // Error messages
+}
+```
+
+**Redux Design Patterns:**
+- **Slice Pattern**: Single slice for presentation state
+- **Immer Integration**: Immutable updates with Redux Toolkit
+- **Normalized State**: Slides stored in array with unique IDs
+- **Action Creators**: Type-safe action creators with payloads
+- **Selectors**: Memoized selectors for derived state
+
+#### **4. User Experience Design**
+
+**Interaction Patterns:**
+- **Tool Selection**: Click tool → Click canvas → Object created
+- **Object Editing**: Select object → Edit properties → Auto-save
+- **File Management**: Drag files → Drop on canvas → Auto-process
+- **Keyboard Shortcuts**: Del key → Delete selected objects
+
+**Visual Feedback Systems:**
+- **Loading States**: Progress bars for image uploads
+- **Hover Effects**: Visual feedback on interactive elements
+- **Selection States**: Clear indication of selected tools/objects
+- **Error Handling**: User-friendly error messages
+
+**Accessibility Features:**
+- **Keyboard Navigation**: Tab order, Enter/Escape keys
+- **Screen Reader Support**: ARIA labels and semantic markup
+- **Color Contrast**: High contrast for text visibility
+- **Focus Management**: Clear focus indicators
+
+#### **5. Technical Challenges Solved**
+
+**Canvas State Synchronization:**
+- Challenge: Keeping Fabric.js canvas state in sync with Redux store
+- Solution: Debounced auto-save with JSON serialization and event listeners
+
+**Memory Management:**
+- Challenge: Preventing memory leaks with canvas objects
+- Solution: Proper cleanup in useEffect cleanup functions
+
+**Drag & Drop Integration:**
+- Challenge: File drag-and-drop with visual feedback
+- Solution: Native HTML5 drag-and-drop API with custom overlay components
+
+**Type Safety with Fabric.js:**
+- Challenge: TypeScript integration with Fabric.js library
+- Solution: Custom type definitions and proper type assertions
 
 ## Tech Stack
 

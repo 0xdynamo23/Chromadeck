@@ -30,12 +30,167 @@ export const SlideCanvas = forwardRef<SlideCanvasRef, SlideCanvasProps>(({ class
     stroke: '#2563eb',
     strokeWidth: 3
   });
+
+  // Upload states for animations
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [isDragOver, setIsDragOver] = useState(false);
+  const [hasCanvasObjects, setHasCanvasObjects] = useState(false);
   
   const currentSlideId = useSelector((state: RootState) => state.presentation.currentSlideId);
   const slides = useSelector((state: RootState) => state.presentation.slides);
   const selectedTool = useSelector((state: RootState) => state.presentation.selectedTool);
 
   const currentSlide = slides.find(slide => slide.id === currentSlideId);
+
+  // Keyboard event handler for delete key
+  const handleKeyDown = useCallback((event: KeyboardEvent) => {
+    if (event.key === 'Delete' || event.key === 'Backspace') {
+      if (!fabricCanvasRef.current) return;
+      
+      const activeObject = fabricCanvasRef.current.getActiveObject();
+      const activeObjects = fabricCanvasRef.current.getActiveObjects();
+      
+      if (activeObjects.length > 0) {
+        activeObjects.forEach(obj => {
+          fabricCanvasRef.current?.remove(obj);
+        });
+        fabricCanvasRef.current.discardActiveObject();
+        fabricCanvasRef.current.renderAll();
+        setHasCanvasObjects((fabricCanvasRef.current?.getObjects().length ?? 0) > 0);
+        
+        // Save canvas state after deletion
+        setTimeout(() => {
+          if (fabricCanvasRef.current && currentSlideId) {
+            const canvasData = JSON.stringify(fabricCanvasRef.current.toJSON());
+            dispatch(updateSlide({ 
+              id: currentSlideId, 
+              canvasData,
+              thumbnail: FileHandlers.generateThumbnail(canvasRef.current!)
+            }));
+          }
+        }, 100);
+      }
+    }
+  }, [currentSlideId, dispatch]);
+
+  // Add keyboard event listeners
+  useEffect(() => {
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [handleKeyDown]);
+
+  // Drag and drop handlers
+  const handleDragOver = useCallback((event: React.DragEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setIsDragOver(true);
+  }, []);
+
+  const handleDragLeave = useCallback((event: React.DragEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setIsDragOver(false);
+  }, []);
+
+  const handleDrop = useCallback(async (event: React.DragEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setIsDragOver(false);
+
+    if (!fabricCanvasRef.current) return;
+
+    const files = Array.from(event.dataTransfer.files);
+    const imageFiles = files.filter(file => file.type.startsWith('image/'));
+
+    if (imageFiles.length === 0) {
+      alert('Please drop image files only');
+      return;
+    }
+
+    // Process each image file
+    for (const file of imageFiles) {
+      await processImageFile(file, event.nativeEvent.offsetX, event.nativeEvent.offsetY);
+    }
+  }, []);
+
+  const processImageFile = async (file: File, x?: number, y?: number) => {
+    if (!fabricCanvasRef.current) return;
+
+    // Check file size (limit to 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('File size too large (max 5MB)');
+      return;
+    }
+
+    setIsUploadingImage(true);
+    setUploadProgress(0);
+
+    try {
+      // Simulate upload progress
+      const progressInterval = setInterval(() => {
+        setUploadProgress(prev => Math.min(prev + 20, 90));
+      }, 100);
+
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          resolve(e.target?.result as string);
+        };
+        reader.onerror = () => {
+          reject(new Error('Failed to read image file'));
+        };
+        reader.readAsDataURL(file);
+      });
+
+      clearInterval(progressInterval);
+      setUploadProgress(100);
+
+      const img = await fabric.FabricImage.fromURL(dataUrl);
+      
+      // Scale image to fit canvas if too large
+      const maxWidth = 400;
+      const maxHeight = 300;
+      
+      if (img.width > maxWidth || img.height > maxHeight) {
+        const scale = Math.min(maxWidth / img.width, maxHeight / img.height);
+        img.scale(scale);
+      }
+
+      // Position image at drop location or default position
+      const left = x !== undefined ? Math.max(10, Math.min(x - (img.width * img.scaleX) / 2, fabricCanvasRef.current.width! - (img.width * img.scaleX) - 10)) : 100;
+      const top = y !== undefined ? Math.max(10, Math.min(y - (img.height * img.scaleY) / 2, fabricCanvasRef.current.height! - (img.height * img.scaleY) - 10)) : 100;
+
+      img.set({
+        left,
+        top,
+        borderColor: '#2563eb',
+        borderScaleFactor: 2,
+        cornerColor: '#2563eb',
+        cornerSize: 8,
+        transparentCorners: false,
+        borderOpacityWhenMoving: 0.8,
+      });
+
+      fabricCanvasRef.current.add(img);
+      fabricCanvasRef.current.setActiveObject(img);
+      fabricCanvasRef.current.renderAll();
+
+      // Reset upload state after a delay
+      setTimeout(() => {
+        setIsUploadingImage(false);
+        setUploadProgress(0);
+      }, 500);
+
+    } catch (error) {
+      console.error('Error processing image file:', error);
+      alert('Failed to load image file');
+      setIsUploadingImage(false);
+      setUploadProgress(0);
+    }
+  };
 
   const addTextBox = useCallback((x: number, y: number) => {
     if (!fabricCanvasRef.current) return;
@@ -224,8 +379,14 @@ export const SlideCanvas = forwardRef<SlideCanvasRef, SlideCanvasProps>(({ class
       };
 
       canvas.on('object:modified', debouncedSaveCanvasState);
-      canvas.on('object:added', debouncedSaveCanvasState);
-      canvas.on('object:removed', debouncedSaveCanvasState);
+      canvas.on('object:added', () => {
+        debouncedSaveCanvasState();
+        setHasCanvasObjects(canvas.getObjects().length > 0);
+      });
+      canvas.on('object:removed', () => {
+        debouncedSaveCanvasState();
+        setHasCanvasObjects(canvas.getObjects().length > 0);
+      });
 
       // Handle resize
       const handleResize = () => {
@@ -416,13 +577,20 @@ export const SlideCanvas = forwardRef<SlideCanvasRef, SlideCanvasProps>(({ class
         const canvasData = JSON.parse(currentSlide.canvasData);
         fabricCanvasRef.current.loadFromJSON(canvasData, () => {
           fabricCanvasRef.current?.renderAll();
+          setHasCanvasObjects((fabricCanvasRef.current?.getObjects().length ?? 0) > 0);
         });
       } catch (error) {
         console.error('Error loading slide data:', error);
         // If loading fails, clear the canvas
         fabricCanvasRef.current.clear();
         fabricCanvasRef.current.renderAll();
+        setHasCanvasObjects(false);
       }
+    } else if (fabricCanvasRef.current) {
+      // Clear canvas if no slide data
+      fabricCanvasRef.current.clear();
+      fabricCanvasRef.current.renderAll();
+      setHasCanvasObjects(false);
     }
   }, [currentSlideId]); // Only depend on currentSlideId to prevent infinite loops
 
@@ -440,8 +608,19 @@ export const SlideCanvas = forwardRef<SlideCanvasRef, SlideCanvasProps>(({ class
   const addImageFromUrl = async (url: string) => {
     if (!fabricCanvasRef.current) return;
 
+    setIsUploadingImage(true);
+    setUploadProgress(0);
+
     try {
+      // Simulate loading progress
+      const progressInterval = setInterval(() => {
+        setUploadProgress(prev => Math.min(prev + 15, 90));
+      }, 150);
+
       const dataUrl = await FileHandlers.loadImageFromUrl(url);
+      
+      clearInterval(progressInterval);
+      setUploadProgress(100);
       
       const img = await fabric.FabricImage.fromURL(dataUrl);
       
@@ -457,21 +636,47 @@ export const SlideCanvas = forwardRef<SlideCanvasRef, SlideCanvasProps>(({ class
       img.set({
         left: 100,
         top: 100,
+        borderColor: '#2563eb',
+        borderScaleFactor: 2,
+        cornerColor: '#2563eb',
+        cornerSize: 8,
+        transparentCorners: false,
+        borderOpacityWhenMoving: 0.8,
       });
 
       fabricCanvasRef.current.add(img);
       fabricCanvasRef.current.setActiveObject(img);
+
+      // Reset upload state after a delay
+      setTimeout(() => {
+        setIsUploadingImage(false);
+        setUploadProgress(0);
+      }, 500);
+
     } catch (error) {
       console.error('Error adding image from URL:', error);
       alert('Failed to load image from URL');
+      setIsUploadingImage(false);
+      setUploadProgress(0);
     }
   };
 
   const addImageFromFile = async () => {
     if (!fabricCanvasRef.current) return;
 
+    setIsUploadingImage(true);
+    setUploadProgress(0);
+
     try {
+      // Simulate loading progress
+      const progressInterval = setInterval(() => {
+        setUploadProgress(prev => Math.min(prev + 20, 90));
+      }, 100);
+
       const dataUrl = await FileHandlers.loadImageFromFile();
+      
+      clearInterval(progressInterval);
+      setUploadProgress(100);
       
       const img = await fabric.FabricImage.fromURL(dataUrl);
       
@@ -487,13 +692,28 @@ export const SlideCanvas = forwardRef<SlideCanvasRef, SlideCanvasProps>(({ class
       img.set({
         left: 100,
         top: 100,
+        borderColor: '#2563eb',
+        borderScaleFactor: 2,
+        cornerColor: '#2563eb',
+        cornerSize: 8,
+        transparentCorners: false,
+        borderOpacityWhenMoving: 0.8,
       });
 
       fabricCanvasRef.current.add(img);
       fabricCanvasRef.current.setActiveObject(img);
+
+      // Reset upload state after a delay
+      setTimeout(() => {
+        setIsUploadingImage(false);
+        setUploadProgress(0);
+      }, 500);
+
     } catch (error) {
       console.error('Error adding image from file:', error);
       alert('Failed to load image from file');
+      setIsUploadingImage(false);
+      setUploadProgress(0);
     }
   };
 
@@ -623,21 +843,72 @@ export const SlideCanvas = forwardRef<SlideCanvasRef, SlideCanvasProps>(({ class
   return (
     <div className={`${className} flex flex-col bg-gradient-to-br from-gray-50 to-gray-100 w-full h-full min-h-0 overflow-hidden`}>
       {/* Tool Status Indicator */}
-      {selectedTool !== 'select' && (
-        <div className="flex-shrink-0 p-4 flex items-center justify-center">
-          <div className="bg-blue-600 text-white px-4 py-2 rounded-full text-sm font-medium shadow-lg flex items-center gap-2">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            Click on canvas to add {selectedTool}
+      <div key="tool-status" className="flex-shrink-0">
+        {selectedTool !== 'select' && (
+          <div className="p-4 flex items-center justify-center">
+            <div className="bg-white border border-gray-300 text-gray-800 px-4 py-2 rounded-lg text-sm font-medium shadow-sm flex items-center gap-2">
+              <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Click on canvas to add {selectedTool}
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
+
+      {/* Upload Progress Indicator */}
+      <div key="upload-progress" className="flex-shrink-0">
+        {isUploadingImage && (
+          <div className="p-4 flex items-center justify-center">
+            <div className="bg-white border border-gray-300 text-gray-800 px-6 py-3 rounded-lg text-sm font-medium shadow-sm flex items-center gap-3">
+              <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+              <span>Uploading image... {uploadProgress}%</span>
+              <div className="w-20 h-2 bg-gray-200 rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-blue-600 transition-all duration-300 ease-out rounded-full"
+                  style={{ width: `${uploadProgress}%` }}
+                ></div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
       
       {/* Canvas Container */}
-      <div className="flex-1 flex items-center justify-center p-4 min-h-0">
-        <div className="bg-white shadow-lg rounded-lg overflow-hidden flex items-center justify-center border border-gray-200 transition-all duration-300 hover:shadow-xl" style={{ maxWidth: '100%', maxHeight: '100%' }}>
+      <div key="canvas-container" className="flex-1 flex items-center justify-center p-4 min-h-0 relative">
+        {/* Drag and Drop Overlay */}
+        <div key="drag-overlay" className={`absolute inset-0 z-10 transition-opacity duration-200 ${isDragOver ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+          <div className="absolute inset-0 bg-gray-100 bg-opacity-90 border-4 border-dashed border-gray-400 rounded-lg flex items-center justify-center">
+            <div className="bg-white border border-gray-300 text-gray-800 px-6 py-4 rounded-lg shadow-sm flex items-center gap-3">
+              <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+              </svg>
+              <span className="text-lg font-semibold">Drop images here to add them to your slide</span>
+            </div>
+          </div>
+        </div>
+
+        <div 
+          key="canvas-wrapper"
+          className="bg-white shadow-lg rounded-lg overflow-hidden flex items-center justify-center border border-gray-200 transition-all duration-300 hover:shadow-xl relative" 
+          style={{ maxWidth: '100%', maxHeight: '100%' }}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+        >
+          {/* Drag and Drop Instructions */}
+          <div key="drop-instructions" className={`absolute inset-0 flex items-center justify-center pointer-events-none z-5 transition-opacity duration-200 ${!isDragOver && !hasCanvasObjects ? 'opacity-100' : 'opacity-0'}`}>
+            <div className="text-center text-gray-400 bg-white bg-opacity-90 px-6 py-4 rounded-lg border border-dashed border-gray-300">
+              <svg className="w-12 h-12 mx-auto mb-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 12l2 2 4-4M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <p className="text-sm font-medium">Drag & drop images here</p>
+              <p className="text-xs text-gray-500 mt-1">or use the toolbar to add content</p>
+            </div>
+          </div>
+
           <canvas
+            key="fabric-canvas"
             ref={canvasRef}
             className="border-0 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transition-all duration-200"
             style={{ 
@@ -648,6 +919,17 @@ export const SlideCanvas = forwardRef<SlideCanvasRef, SlideCanvasProps>(({ class
           />
         </div>
       </div>
+
+      {/* Help Text */}
+      <div key="help-text" className="flex-shrink-0 p-2 text-center">
+        <p className="text-xs text-gray-500">
+          Press <kbd className="px-1 py-0.5 bg-gray-100 border border-gray-300 rounded text-xs">Del</kbd> to delete selected objects • 
+          Drag & drop images onto the canvas • 
+          Click tools then click canvas to add elements
+        </p>
+      </div>
     </div>
   );
 });
+
+SlideCanvas.displayName = 'SlideCanvas';
