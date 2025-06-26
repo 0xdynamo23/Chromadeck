@@ -20,6 +20,8 @@ interface ToolbarProps {
   onAddImageFromFile?: () => void;
   onTextFormatChange?: (format: { fontSize?: number; fontWeight?: string; fontStyle?: string; textAlign?: string; fill?: string }) => void;
   onShapeFormatChange?: (format: { fill?: string; stroke?: string; strokeWidth?: number }) => void;
+  onToggleSidebar?: () => void;
+  isSidebarOpen?: boolean;
 }
 
 export const Toolbar: React.FC<ToolbarProps> = ({ 
@@ -27,7 +29,9 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   onAddImageFromUrl, 
   onAddImageFromFile,
   onTextFormatChange,
-  onShapeFormatChange
+  onShapeFormatChange,
+  onToggleSidebar,
+  isSidebarOpen
 }) => {
   const dispatch = useDispatch();
   const canvasRef = useRef<any>(null);
@@ -230,9 +234,26 @@ export const Toolbar: React.FC<ToolbarProps> = ({
 
   return (
     <>
-      <div className={`${className} bg-gradient-to-r from-white via-gray-50 to-white border-b border-gray-200 flex items-center justify-between px-6 py-4 shadow-sm`}>
+      <div className={`${className} bg-gradient-to-r from-white via-gray-50 to-white border-b border-gray-200 flex items-center justify-between px-4 lg:px-6 py-3 lg:py-4 shadow-sm`}>
+        {/* Mobile Sidebar Toggle */}
+        {onToggleSidebar && (
+          <button
+            onClick={onToggleSidebar}
+            className="lg:hidden p-2 rounded-lg hover:bg-gray-100 text-gray-600 hover:text-gray-800 transition-colors duration-200"
+            title={isSidebarOpen ? "Close sidebar" : "Open sidebar"}
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              {isSidebarOpen ? (
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              ) : (
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              )}
+            </svg>
+          </button>
+        )}
+
         {/* Left Section - Presentation Name */}
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 lg:gap-4 min-w-0 flex-1 lg:flex-initial">
           {isEditingName ? (
             <input
               type="text"
@@ -254,21 +275,21 @@ export const Toolbar: React.FC<ToolbarProps> = ({
           )}
           
           {lastSaved && (
-            <span className="text-xs text-gray-500">
+            <span className="text-xs text-gray-500 hidden sm:inline">
               Saved {new Date(lastSaved).toLocaleTimeString()}
             </span>
           )}
         </div>
 
         {/* Center Section - Tools and Formatting */}
-        <div className="flex items-center gap-4">
+        <div className="hidden md:flex items-center gap-2 lg:gap-4">
           {/* Drawing Tools */}
-          <div className="flex items-center gap-2 bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl p-1 shadow-inner border border-gray-200">
+          <div className="flex items-center gap-1 lg:gap-2 bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl p-1 shadow-inner border border-gray-200">
             {tools.map((tool) => (
               tool.id === 'image' ? (
                 <div key={tool.id} className="relative" ref={imageOptionsRef}>
                   <button
-                    className={`p-3 rounded-lg transition-all duration-200 flex items-center justify-center transform hover:scale-105 ${
+                    className={`p-2 lg:p-3 rounded-lg transition-all duration-200 flex items-center justify-center transform hover:scale-105 ${
                       showImageOptions
                         ? 'bg-gray-200 border border-gray-300 text-gray-800 shadow-sm'
                         : 'hover:bg-white hover:shadow-md text-gray-600 hover:text-gray-800 hover:ring-1 hover:ring-gray-200'
@@ -340,7 +361,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
                 <button
                   key={tool.id}
                   onClick={() => handleToolSelect(tool.id)}
-                  className={`p-3 rounded-lg transition-all duration-200 flex items-center justify-center transform hover:scale-105 ${
+                  className={`p-2 lg:p-3 rounded-lg transition-all duration-200 flex items-center justify-center transform hover:scale-105 ${
                     selectedTool === tool.id
                       ? 'bg-gray-200 border border-gray-300 text-gray-800 shadow-sm'
                       : 'hover:bg-white hover:shadow-md text-gray-600 hover:text-gray-800 hover:ring-1 hover:ring-gray-200'
@@ -650,22 +671,22 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         </div>
 
         {/* Right Section - File Operations */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-1 lg:gap-3">
           {/* Add Slide Button */}
           <button
             onClick={handleAddSlide}
-            className="px-3 py-2 rounded-md bg-white border border-gray-300 hover:bg-gray-50 text-gray-800 text-sm font-medium transition-all duration-200 flex items-center gap-2 shadow-sm hover:shadow-md"
+            className="px-2 lg:px-3 py-2 rounded-md bg-white border border-gray-300 hover:bg-gray-50 text-gray-800 text-sm font-medium transition-all duration-200 flex items-center gap-1 lg:gap-2 shadow-sm hover:shadow-md"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
             </svg>
-            Slide
+            <span className="hidden sm:inline">Slide</span>
           </button>
 
-          {/* Load Button */}
+          {/* Load Button - Hidden on mobile */}
           <button
             onClick={handleLoadPresentation}
-            className="px-3 py-2 rounded-md bg-white border border-gray-300 hover:bg-gray-50 text-gray-800 text-sm font-medium transition-all duration-200 flex items-center gap-2 shadow-sm hover:shadow-md"
+            className="hidden sm:flex px-2 lg:px-3 py-2 rounded-md bg-white border border-gray-300 hover:bg-gray-50 text-gray-800 text-sm font-medium transition-all duration-200 items-center gap-1 lg:gap-2 shadow-sm hover:shadow-md"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 12l2 2 4-4" />
@@ -673,10 +694,10 @@ export const Toolbar: React.FC<ToolbarProps> = ({
             Load
           </button>
 
-          {/* New Button */}
+          {/* New Button - Hidden on mobile */}
           <button
             onClick={handleNewPresentation}
-            className="px-3 py-2 rounded-md bg-white border border-gray-300 hover:bg-gray-50 text-gray-800 text-sm font-medium transition-all duration-200 flex items-center gap-2 shadow-sm hover:shadow-md"
+            className="hidden sm:flex px-2 lg:px-3 py-2 rounded-md bg-white border border-gray-300 hover:bg-gray-50 text-gray-800 text-sm font-medium transition-all duration-200 items-center gap-1 lg:gap-2 shadow-sm hover:shadow-md"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
@@ -736,6 +757,64 @@ export const Toolbar: React.FC<ToolbarProps> = ({
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      </div>
+
+      {/* Mobile Tools Bar - Hidden on desktop */}
+      <div className="md:hidden bg-white border-b border-gray-200 px-4 py-2">
+        <div className="flex items-center justify-between">
+          {/* Essential Tools */}
+          <div className="flex items-center gap-1">
+            {tools.slice(0, 4).map((tool) => (
+              <button
+                key={tool.id}
+                onClick={() => handleToolSelect(tool.id)}
+                className={`p-2 rounded-lg transition-all duration-200 flex items-center justify-center ${
+                  selectedTool === tool.id
+                    ? 'bg-blue-100 border border-blue-300 text-blue-800'
+                    : 'hover:bg-gray-100 text-gray-600 hover:text-gray-800'
+                }`}
+                title={tool.name}
+              >
+                {getToolIcon(tool.icon)}
+              </button>
+            ))}
+          </div>
+
+          {/* Mobile Actions */}
+          <div className="flex items-center gap-2">
+            {/* Text Format Toggle */}
+            <button
+              onClick={() => setShowTextFormatDropdown(!showTextFormatDropdown)}
+              className="p-2 rounded-lg hover:bg-gray-100 text-gray-600 hover:text-gray-800 transition-colors"
+              title="Text Format"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+            </button>
+
+            {/* File Operations */}
+            <button
+              onClick={handleLoadPresentation}
+              className="p-2 rounded-lg hover:bg-gray-100 text-gray-600 hover:text-gray-800 transition-colors"
+              title="Load"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 12l2 2 4-4" />
+              </svg>
+            </button>
+
+            <button
+              onClick={handleNewPresentation}
+              className="p-2 rounded-lg hover:bg-gray-100 text-gray-600 hover:text-gray-800 transition-colors"
+              title="New"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+              </svg>
+            </button>
           </div>
         </div>
       </div>

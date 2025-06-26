@@ -875,7 +875,7 @@ export const SlideCanvas = forwardRef<SlideCanvasRef, SlideCanvasProps>(({ class
       </div>
       
       {/* Canvas Container */}
-      <div key="canvas-container" className="flex-1 flex items-center justify-center p-4 min-h-0 relative">
+      <div key="canvas-container" className="flex-1 flex items-center justify-center p-2 lg:p-4 min-h-0 relative">
         {/* Drag and Drop Overlay */}
         <div key="drag-overlay" className={`absolute inset-0 z-10 transition-opacity duration-200 ${isDragOver ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
           <div className="absolute inset-0 bg-gray-100 bg-opacity-90 border-4 border-dashed border-gray-400 rounded-lg flex items-center justify-center">
@@ -898,12 +898,12 @@ export const SlideCanvas = forwardRef<SlideCanvasRef, SlideCanvasProps>(({ class
         >
           {/* Drag and Drop Instructions */}
           <div key="drop-instructions" className={`absolute inset-0 flex items-center justify-center pointer-events-none z-5 transition-opacity duration-200 ${!isDragOver && !hasCanvasObjects ? 'opacity-100' : 'opacity-0'}`}>
-            <div className="text-center text-gray-400 bg-white bg-opacity-90 px-6 py-4 rounded-lg border border-dashed border-gray-300">
-              <svg className="w-12 h-12 mx-auto mb-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="text-center text-gray-400 bg-white bg-opacity-90 px-4 lg:px-6 py-3 lg:py-4 rounded-lg border border-dashed border-gray-300">
+              <svg className="w-8 lg:w-12 h-8 lg:h-12 mx-auto mb-2 lg:mb-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 12l2 2 4-4M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <p className="text-sm font-medium">Drag & drop images here</p>
-              <p className="text-xs text-gray-500 mt-1">or use the toolbar to add content</p>
+              <p className="text-xs lg:text-sm font-medium">Drag & drop images here</p>
+              <p className="text-xs text-gray-500 mt-1 hidden sm:block">or use the toolbar to add content</p>
             </div>
           </div>
 
@@ -921,10 +921,10 @@ export const SlideCanvas = forwardRef<SlideCanvasRef, SlideCanvasProps>(({ class
       </div>
 
       {/* Help Text */}
-      <div key="help-text" className="flex-shrink-0 p-2 text-center">
+      <div key="help-text" className="flex-shrink-0 p-2 text-center hidden sm:block">
         <p className="text-xs text-gray-500">
           Press <kbd className="px-1 py-0.5 bg-gray-100 border border-gray-300 rounded text-xs">Del</kbd> to delete selected objects • 
-          Drag & drop images onto the canvas • 
+          <span className="hidden md:inline">Drag & drop images onto the canvas • </span>
           Click tools then click canvas to add elements
         </p>
       </div>
